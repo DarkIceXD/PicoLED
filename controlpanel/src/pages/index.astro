@@ -1,0 +1,112 @@
+---
+import Page from "../layouts/Page.astro";
+import Container from "../components/Container.astro";
+import Input from "../components/Input";
+import Dropdown from "../components/Dropdown";
+
+let key = 0;
+const url = "http://192.168.4.1/api";
+---
+
+<Page lang="en" class="dark">
+	<Container>
+		<div
+			class="bg-white dark:bg-slate-800 shadow overflow-hidden rounded-md space-y-6 p-6"
+		>
+			<h1 class="text-xl font-medium">LED Control Panel</h1>
+			<fieldset>
+				<legend class="text-lg">LED Settings</legend>
+				<div class="mt-4 space-y-2">
+					<Input
+						client:load
+						url={url}
+						key={key++}
+						type="number"
+						inputmode="numeric">Count</Input
+					>
+					<Input
+						client:load
+						url={url}
+						key={key++}
+						type="number"
+						inputmode="numeric">Update delay (ms)</Input
+					>
+					<Input
+						client:load
+						url={url}
+						key={key++}
+						type="range"
+						max="255">Brightness</Input
+					>
+				</div>
+			</fieldset>
+			<fieldset>
+				<legend class="text-lg">Color</legend>
+				<div class="mt-4 space-y-2">
+					<Dropdown
+						client:load
+						url={url}
+						key={key++}
+						options={[
+							"Primary",
+							"Secondary",
+							"Random",
+							"Linear Gradient",
+							"Moving Linear Gradient",
+							"Rainbow",
+							"Moving Rainbow",
+						]}
+					/>
+					<Input
+						client:load
+						url={url}
+						key={key++}
+						type="color"
+						inputmode="numeric">Primary</Input
+					>
+					<Input
+						client:load
+						url={url}
+						key={key++}
+						type="color"
+						inputmode="numeric">Secondary</Input
+					>
+					<Input
+						client:load
+						url={url}
+						key={key++}
+						type="number"
+						inputmode="numeric">Max value</Input
+					>
+				</div>
+			</fieldset>
+			<fieldset>
+				<legend class="text-lg">Pattern</legend>
+				<div class="mt-4 space-y-2">
+					<Dropdown
+						client:load
+						url={url}
+						key={key++}
+						options={[
+							"Disabled",
+							"Static",
+							"Sparkle",
+							"Snake",
+							"Multiple Snakes",
+							"Breathing",
+							"Fill",
+							"Fill two sided",
+						]}
+					/>
+					<Input
+						client:load
+						url={url}
+						key={key++}
+						type="number"
+						inputmode="numeric">Option</Input
+					>
+				</div>
+			</fieldset>
+		</div>
+	</Container>
+</Page>
