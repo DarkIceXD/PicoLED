@@ -171,7 +171,6 @@ int main()
     IP4_ADDR(&gw, 192, 168, 4, 1);
     IP4_ADDR(&mask, 255, 255, 255, 0);
 
-    // Start the dhcp server
     dhcp_server_t dhcp_server;
     dhcp_server_init(&dhcp_server, &gw, &mask);
 
