@@ -6,9 +6,10 @@
 #include "dnsserver/dnsserver.h"
 #include "httpserver/httpserver.h"
 #include "led_effects/led_effects.h"
+#include "storage/storage.h"
 
 #include "ws2812.pio.h"
-#define TEMP_SIZE 16
+#define TEMP_SIZE 128
 
 struct settings
 {
@@ -21,7 +22,23 @@ struct settings
     uint32_t max_value;
     enum pattern p;
     uint32_t option;
-} settings;
+    char ap_name[100];
+    char password[100];
+};
+
+static struct settings settings = {
+    .led_count = 300,
+    .delay = 25,
+    .brightness = 100,
+    .c = LINEAR_GRADIENT,
+    .primary = {.r = 0, .g = 0, .b = 0, .w = 0},
+    .secondary = {.r = 255, .g = 255, .b = 255, .w = 0},
+    .max_value = 300,
+    .p = FILL_TWO_SIDED,
+    .option = 20,
+    .ap_name = "DarkLEDs",
+    .password = "password",
+};
 
 static const char *http_post_handler(const char *path, const char *content)
 {
@@ -56,6 +73,12 @@ static const char *http_post_handler(const char *path, const char *content)
             break;
         case 8:
             snprintf(response, TEMP_SIZE, "%lu", settings.option);
+            break;
+        case 9:
+            snprintf(response, TEMP_SIZE, "%s", settings.ap_name);
+            break;
+        case 10:
+            snprintf(response, TEMP_SIZE, "%s", settings.password);
             break;
         default:
             return NULL;
@@ -105,6 +128,15 @@ static const char *http_post_handler(const char *path, const char *content)
         case 8:
             settings.option = atoi(first_end);
             break;
+        case 9:
+            strcpy(settings.ap_name, first_end);
+            break;
+        case 10:
+            strcpy(settings.password, first_end);
+            break;
+        case 11:
+            save(&settings, sizeof(settings));
+            break;
         default:
             return NULL;
         }
@@ -135,15 +167,6 @@ void core1_entry()
     const int gpio_pin = 2;
     const bool is_rgbw = false;
     ws2812_program_init(pio, sm, offset, gpio_pin, 800000, is_rgbw);
-    settings.led_count = 300;
-    settings.delay = 25;
-    settings.brightness = 100;
-    settings.c = LINEAR_GRADIENT;
-    settings.primary = rgb_init(0, 0, 0);
-    settings.secondary = rgb_init(255, 255, 255);
-    settings.max_value = settings.led_count;
-    settings.p = FILL_TWO_SIDED;
-    settings.option = 20;
     for (uint32_t i = 0;; ++i)
     {
         for (uint32_t j = 0; j < settings.led_count; j++)
@@ -163,9 +186,8 @@ int main()
     if (cyw43_arch_init())
         return 1;
 
-    static const char *ap_name = "DarkLEDs";
-    static const char *password = "password";
-    cyw43_arch_enable_ap_mode(ap_name, password, CYW43_AUTH_WPA2_AES_PSK);
+    load(&settings, sizeof(settings));
+    cyw43_arch_enable_ap_mode(settings.ap_name, settings.password, CYW43_AUTH_WPA2_AES_PSK);
 
     ip4_addr_t gw, mask;
     IP4_ADDR(&gw, 192, 168, 4, 1);

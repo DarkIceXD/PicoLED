@@ -19,7 +19,7 @@ export default function (props) {
     const [value, setValue] = createSignal("");
     get(props.url, props.key)
         .then((response) => response.text())
-        .then((result) => setValue(parseInt(result)))
+        .then((result) => setValue(result))
         .catch((error) => console.error('Error:', error))
     return (
         <>

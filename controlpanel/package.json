@@ -19,6 +19,6 @@
   },
   "dependencies": {
     "astro-icon": "^0.7.3",
-    "solid-icons": "^1.0.1"
+    "solid-icons": "^1.0.2"
   }
 }

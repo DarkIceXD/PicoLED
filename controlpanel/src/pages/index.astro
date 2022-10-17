@@ -3,6 +3,7 @@ import Page from "../layouts/Page.astro";
 import Container from "../components/Container.astro";
 import Input from "../components/Input";
 import Dropdown from "../components/Dropdown";
+import Button from "../components/Button";
 
 let key = 0;
 const url = "http://192.168.4.1/api";
@@ -107,6 +108,16 @@ const url = "http://192.168.4.1/api";
 					>
 				</div>
 			</fieldset>
+			<details>
+				<summary class="text-lg select-none">WiFi settings</summary>
+				<p>These settings get changed after a reboot.</p>
+				<Input client:load url={url} key={key++} type="text">AP Name</Input
+				>
+				<Input client:load url={url} key={key++} type="text"
+					>Password</Input
+				>
+			</details>
+			<Button client:load url={url} key={key++}>Save</Button>
 		</div>
 	</Container>
 </Page>
