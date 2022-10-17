@@ -30,7 +30,7 @@ static struct settings settings = {
     .led_count = 300,
     .delay = 25,
     .brightness = 100,
-    .c = LINEAR_GRADIENT,
+    .c = RAINBOW,
     .primary = {.r = 0, .g = 0, .b = 0, .w = 0},
     .secondary = {.r = 255, .g = 255, .b = 255, .w = 0},
     .max_value = 300,

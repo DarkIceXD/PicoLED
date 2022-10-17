@@ -52,10 +52,14 @@ const url = "http://192.168.4.1/api";
 							"Primary",
 							"Secondary",
 							"Random",
-							"Linear Gradient",
-							"Moving Linear Gradient",
+							"Gradient",
+							"Moving Gradient",
+							"Two Sided Gradient",
+							"Moving Two Sided Gradient",
+							"Breathing Gradient",
 							"Rainbow",
 							"Moving Rainbow",
+							"Breathing Rainbow",
 						]}
 					/>
 					<Input
@@ -92,11 +96,14 @@ const url = "http://192.168.4.1/api";
 							"Disabled",
 							"Static",
 							"Sparkle",
+							"Random Sparkle",
 							"Snake",
 							"Multiple Snakes",
 							"Breathing",
 							"Fill",
 							"Fill two sided",
+							"Fade",
+							"Fade Moving",
 						]}
 					/>
 					<Input
@@ -111,7 +118,8 @@ const url = "http://192.168.4.1/api";
 			<details>
 				<summary class="text-lg select-none">WiFi settings</summary>
 				<p>These settings get changed after a reboot.</p>
-				<Input client:load url={url} key={key++} type="text">AP Name</Input
+				<Input client:load url={url} key={key++} type="text"
+					>AP Name</Input
 				>
 				<Input client:load url={url} key={key++} type="text"
 					>Password</Input
