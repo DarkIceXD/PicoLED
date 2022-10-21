@@ -26,22 +26,23 @@ struct rgbw rgb_init(const uint8_t r, const uint8_t g, const uint8_t b)
     return rgbw_init(r, g, b, 0);
 }
 
-struct rgbw rgbw_set_brightness(const uint8_t brightness, const struct rgbw s)
+static inline int scale(const uint8_t a, const uint8_t b, const int32_t s, const int32_t max)
 {
-    return rgbw_init(
-        s.r * brightness / 0xff,
-        s.g * brightness / 0xff,
-        s.b * brightness / 0xff,
-        s.w * brightness / 0xff);
+    return a + (b - a) * s / max;
 }
 
 static struct rgbw gradient(const struct rgbw primary, const struct rgbw secondary, const uint32_t x, const uint32_t max)
 {
     return rgbw_init(
-        primary.r + (secondary.r - primary.r) * x / max,
-        primary.g + (secondary.g - primary.g) * x / max,
-        primary.b + (secondary.b - primary.b) * x / max,
-        primary.w + (secondary.w - primary.w) * x / max);
+        scale(primary.r, secondary.r, x, max),
+        scale(primary.g, secondary.g, x, max),
+        scale(primary.b, secondary.b, x, max),
+        scale(primary.w, secondary.w, x, max));
+}
+
+struct rgbw rgbw_set_brightness(const uint8_t brightness, const struct rgbw s)
+{
+    return gradient(rgbw_init(0, 0, 0, 0), s, brightness, 0xff);
 }
 
 static struct rgbw gradient_two_sided(const struct rgbw primary, const struct rgbw secondary, const uint32_t x, const uint32_t max)
@@ -135,9 +136,9 @@ static uint8_t random_sparkle(const uint32_t option, const uint32_t i, const uin
     return 0;
 }
 
-static uint8_t snake(const uint32_t option, const uint32_t i, const uint32_t j, const uint32_t len)
+static uint8_t snake(const int32_t option, const uint32_t i, const int32_t j, const uint32_t len)
 {
-    const uint32_t x = i % len;
+    const int32_t x = i % (len + option);
     return ((x - option) < j && j <= x) ? 0xff : 0;
 }
 
