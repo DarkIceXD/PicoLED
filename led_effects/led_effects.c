@@ -31,13 +31,13 @@ static inline int scale(const uint8_t a, const uint8_t b, const int32_t s, const
     return a + (b - a) * s / max;
 }
 
-static struct rgbw gradient(const struct rgbw primary, const struct rgbw secondary, const uint32_t x, const uint32_t max)
+static struct rgbw gradient(const struct rgbw a, const struct rgbw b, const uint32_t x, const uint32_t max)
 {
     return rgbw_init(
-        scale(primary.r, secondary.r, x, max),
-        scale(primary.g, secondary.g, x, max),
-        scale(primary.b, secondary.b, x, max),
-        scale(primary.w, secondary.w, x, max));
+        scale(a.r, b.r, x, max),
+        scale(a.g, b.g, x, max),
+        scale(a.b, b.b, x, max),
+        scale(a.w, b.w, x, max));
 }
 
 struct rgbw rgbw_set_brightness(const uint8_t brightness, const struct rgbw s)
@@ -45,15 +45,13 @@ struct rgbw rgbw_set_brightness(const uint8_t brightness, const struct rgbw s)
     return gradient(rgbw_init(0, 0, 0, 0), s, brightness, 0xff);
 }
 
-static struct rgbw gradient_two_sided(const struct rgbw primary, const struct rgbw secondary, const uint32_t x, const uint32_t max)
+static struct rgbw gradient_multi_color(const uint32_t x, const struct color_data *data)
 {
-    const uint32_t normalized = x % (max * 2);
-    const uint32_t state = normalized / max;
-    const uint32_t rem = normalized % max;
-    if (state == 0)
-        return gradient(primary, secondary, rem, max);
-    else
-        return gradient(secondary, primary, rem, max);
+    const uint32_t segment = data->max / data->used;
+    const uint32_t normalized = x % data->max;
+    const uint32_t state = normalized / segment;
+    const uint32_t rem = normalized % segment;
+    return gradient(data->colors[state], data->colors[state + 1], rem, segment);
 }
 
 static struct rgbw rainbow(const uint32_t x, const uint32_t max)
@@ -70,55 +68,42 @@ static struct rgbw rainbow(const uint32_t x, const uint32_t max)
         return rgb_init(rem, 0, 0xff - rem);
 }
 
-struct rgbw get_color(const enum color c, const struct rgbw primary, const struct rgbw secondary, const uint32_t i, const uint32_t j, const uint32_t max)
+struct rgbw get_color(const enum color color, const uint32_t i, const uint32_t j, const struct color_data *data)
 {
-    switch (c)
+    switch (color)
     {
-    case SECONDARY:
-        return secondary;
     case RANDOM:
         return rgb_init(rand(), rand(), rand());
     case GRADIENT:
-        return gradient(primary, secondary, j, max);
+        return gradient_multi_color(j, data);
     case GRADIENT_MOVING:
-        return gradient(primary, secondary, (i + j) % max, max);
-    case GRADIENT_TWO_SIDED:
-        return gradient_two_sided(primary, secondary, j, max);
-    case GRADIENT_TWO_SIDED_MOVING:
-        return gradient_two_sided(primary, secondary, (i + j) % max, max);
+        return gradient_multi_color((i + j) % data->max, data);
     case GRADIENT_BREATHING:
-        return gradient_two_sided(primary, secondary, i, max);
+        return gradient_multi_color(i % data->max, data);
     case RAINBOW:
-        return rainbow(j, max);
+        return rainbow(j, data->max);
     case RAINBOW_MOVING:
-        return rainbow((i + j) % max, max);
+        return rainbow((i + j) % data->max, data->max);
     case RAINBOW_BREATHING:
-        return rainbow(i % max, max);
+        return rainbow(i % data->max, data->max);
     default:
-        return primary;
+        return data->colors[min(COLORS, data->selected)];
     }
 }
 
 static uint8_t sparkle(const uint32_t option, const uint32_t i, const uint32_t j, const uint32_t len)
 {
-    const uint32_t normalized = i % (0xff * len / option);
-    const uint8_t state = normalized / 0xff;
-    if ((j % option) == state)
-        return 0xff - (normalized % 0xff);
-
-    return 0;
-}
-
-static uint8_t random_sparkle(const uint32_t option, const uint32_t i, const uint32_t j, const uint32_t len)
-{
     if (j == 0)
     {
         for (uint32_t x = 0; x < min(STATES, option); x++)
         {
-            if (state[x].brightness == 0 && !(rand() % 16))
+            if (state[x].brightness == 0)
             {
-                state[x].j = rand() % len;
-                state[x].brightness = 0xff / 3 + (rand() % (0xff * 2 / 3));
+                if (!(rand() % 16))
+                {
+                    state[x].j = rand() % len;
+                    state[x].brightness = 0xff / 3 + (rand() % (0xff * 2 / 3));
+                }
             }
             else
             {
@@ -134,12 +119,6 @@ static uint8_t random_sparkle(const uint32_t option, const uint32_t i, const uin
     }
 
     return 0;
-}
-
-static uint8_t snake(const int32_t option, const uint32_t i, const int32_t j, const uint32_t len)
-{
-    const int32_t x = i % (len + option);
-    return ((x - option) < j && j <= x) ? 0xff : 0;
 }
 
 static uint8_t breathing(const uint32_t i)
@@ -195,30 +174,26 @@ static uint8_t fade(const uint32_t j, const uint32_t len)
     return step % 0xff;
 }
 
-uint8_t get_pattern(const enum pattern p, const uint32_t option, const uint32_t i, const uint32_t j, const uint32_t len)
+uint8_t get_pattern(const enum pattern pattern, const uint32_t i, const uint32_t j, const struct pattern_data *data)
 {
-    switch (p)
+    switch (pattern)
     {
     case ENABLED:
         return 0xff;
     case SPARKLE:
-        return sparkle(option, i, j, len);
-    case RANDOM_SPARKLE:
-        return random_sparkle(option, i, j, len);
-    case SNAKE:
-        return snake(option, i, j, len);
-    case MULTIPLE_SNAKES:
-        return (((i + j) % option) < option * 2 / 3) ? 0xff : 0;
+        return sparkle(data->max, i, j, data->length);
+    case SNAKES:
+        return (((i + j) % (data->max + data->padding)) < data->max) ? 0xff : 0;
     case BREATHING:
         return breathing(i);
     case FILL:
-        return fill(i, j, len);
+        return fill(i, j, data->length);
     case FILL_TWO_SIDED:
-        return fill_two_sided(i, j, len);
+        return fill_two_sided(i, j, data->length);
     case FADE:
-        return fade(j, len);
+        return fade(j, data->length);
     case FADE_MOVING:
-        return fade((i + j) % len, len);
+        return fade((i + j) % data->length, data->length);
     default:
         return 0;
     }

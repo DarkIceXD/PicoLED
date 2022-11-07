@@ -13,29 +13,28 @@
 
 struct settings
 {
-    uint32_t led_count;
     uint32_t delay;
     uint8_t brightness;
     enum color c;
-    struct rgbw primary;
-    struct rgbw secondary;
-    uint32_t max_value;
+    struct color_data color;
     enum pattern p;
-    uint32_t option;
+    struct pattern_data pattern;
     char ap_name[100];
     char password[100];
 };
-
 static struct settings settings = {
-    .led_count = 300,
     .delay = 25,
     .brightness = 100,
     .c = RAINBOW,
-    .primary = {.r = 0, .g = 0, .b = 0, .w = 0},
-    .secondary = {.r = 255, .g = 255, .b = 255, .w = 0},
-    .max_value = 300,
+    .color.colors[0] = {.r = 255, .g = 255, .b = 255, .w = 0},
+    .color.colors[1] = {.r = 255, .g = 255, .b = 255, .w = 0},
+    .color.selected = 0,
+    .color.used = 2,
+    .color.max = 300,
     .p = FILL_TWO_SIDED,
-    .option = 20,
+    .pattern.padding = 20,
+    .pattern.max = 30,
+    .pattern.length = 300,
     .ap_name = "DarkLEDs",
     .password = "password",
 };
@@ -48,7 +47,7 @@ static const char *http_post_handler(const char *path, const char *content)
         switch (atoi(content))
         {
         case 0:
-            snprintf(response, TEMP_SIZE, "%lu", settings.led_count);
+            snprintf(response, TEMP_SIZE, "%lu", settings.pattern.length);
             break;
         case 1:
             snprintf(response, TEMP_SIZE, "%lu", settings.delay);
@@ -60,19 +59,48 @@ static const char *http_post_handler(const char *path, const char *content)
             snprintf(response, TEMP_SIZE, "%u", settings.c);
             break;
         case 4:
-            snprintf(response, TEMP_SIZE, "#%2x%2x%2x", settings.primary.r, settings.primary.g, settings.primary.b);
+        {
+            char *first_end = strchr(content, ',');
+            if (!first_end)
+                return 0;
+            first_end += 1;
+            switch (atoi(first_end))
+            {
+            case 0:
+                snprintf(response, TEMP_SIZE, "%u", settings.color.used);
+                break;
+            case 1:
+                snprintf(response, TEMP_SIZE, "%u", settings.color.selected);
+                break;
+            case 2:
+            {
+                first_end = strchr(first_end, ',');
+                if (!first_end)
+                    return 0;
+                first_end += 1;
+                const int index = atoi(first_end);
+                if (index >= COLORS)
+                    return 0;
+                snprintf(response, TEMP_SIZE, "#%2x%2x%2x", settings.color.colors[index].r, settings.color.colors[index].g, settings.color.colors[index].b);
+                break;
+            }
+            default:
+                return NULL;
+            }
             break;
+        }
+        break;
         case 5:
-            snprintf(response, TEMP_SIZE, "#%2x%2x%2x", settings.secondary.r, settings.secondary.g, settings.secondary.b);
+            snprintf(response, TEMP_SIZE, "%lu", settings.color.max);
             break;
         case 6:
-            snprintf(response, TEMP_SIZE, "%lu", settings.max_value);
-            break;
-        case 7:
             snprintf(response, TEMP_SIZE, "%u", settings.p);
             break;
+        case 7:
+            snprintf(response, TEMP_SIZE, "%lu", settings.pattern.padding);
+            break;
         case 8:
-            snprintf(response, TEMP_SIZE, "%lu", settings.option);
+            snprintf(response, TEMP_SIZE, "%lu", settings.pattern.max);
             break;
         case 9:
             snprintf(response, TEMP_SIZE, "%s", settings.ap_name);
@@ -94,7 +122,7 @@ static const char *http_post_handler(const char *path, const char *content)
         switch (atoi(content))
         {
         case 0:
-            settings.led_count = atoi(first_end);
+            settings.pattern.length = atoi(first_end);
             break;
         case 1:
             settings.delay = atoi(first_end);
@@ -107,26 +135,59 @@ static const char *http_post_handler(const char *path, const char *content)
             break;
         case 4:
         {
-            int r, g, b;
-            sscanf(first_end, "#%2x%2x%2x", &r, &g, &b);
-            settings.primary = rgb_init(r, g, b);
+            const int option = atoi(first_end);
+            first_end = strchr(first_end, ',');
+            if (!first_end)
+                return 0;
+            first_end += 1;
+            switch (option)
+            {
+            case 0:
+            {
+                const int new_value = atoi(first_end);
+                if (new_value < 2 || new_value >= COLORS)
+                    return 0;
+                settings.color.used = new_value;
+                break;
+            }
+            case 1:
+            {
+                const int new_value = atoi(first_end);
+                if (new_value < 0 || new_value >= settings.color.used)
+                    return 0;
+                settings.color.selected = new_value;
+                break;
+            }
+            case 2:
+            {
+                const int index = atoi(first_end);
+                if (index < 0 || index >= COLORS)
+                    return 0;
+                first_end = strchr(first_end, ',');
+                if (!first_end)
+                    return 0;
+                first_end += 1;
+                int r, g, b;
+                sscanf(first_end, "#%2x%2x%2x", &r, &g, &b);
+                settings.color.colors[index] = rgb_init(r, g, b);
+                break;
+            }
+            default:
+                return NULL;
+            }
             break;
         }
         case 5:
-        {
-            int r, g, b;
-            sscanf(first_end, "#%2x%2x%2x", &r, &g, &b);
-            settings.secondary = rgb_init(r, g, b);
+            settings.color.max = atoi(first_end);
             break;
-        }
         case 6:
-            settings.max_value = atoi(first_end);
-            break;
-        case 7:
             settings.p = atoi(first_end);
             break;
+        case 7:
+            settings.pattern.padding = atoi(first_end);
+            break;
         case 8:
-            settings.option = atoi(first_end);
+            settings.pattern.max = atoi(first_end);
             break;
         case 9:
             strcpy(settings.ap_name, first_end);
@@ -169,11 +230,11 @@ void core1_entry()
     ws2812_program_init(pio, sm, offset, gpio_pin, 800000, is_rgbw);
     for (uint32_t i = 0;; ++i)
     {
-        for (uint32_t j = 0; j < settings.led_count; j++)
+        for (uint32_t j = 0; j < settings.pattern.length; j++)
         {
-            const uint8_t pattern = get_pattern(settings.p, settings.option, i, j, settings.led_count);
+            const uint8_t pattern = get_pattern(settings.p, i, j, &settings.pattern);
             if (pattern)
-                put_pixel(rgbw_to_grbw(rgbw_set_brightness(settings.brightness, rgbw_set_brightness(pattern, get_color(settings.c, settings.primary, settings.secondary, i, j, settings.max_value)))));
+                put_pixel(rgbw_to_grbw(rgbw_set_brightness(settings.brightness, rgbw_set_brightness(pattern, get_color(settings.c, i, j, &settings.color)))));
             else
                 put_pixel(0);
         }
