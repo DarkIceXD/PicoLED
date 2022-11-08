@@ -47,7 +47,7 @@ struct rgbw rgbw_set_brightness(const uint8_t brightness, const struct rgbw s)
 
 static struct rgbw gradient_multi_color(const uint32_t x, const struct color_data *data)
 {
-    const uint32_t segment = data->max / data->used;
+    const uint32_t segment = data->max / (data->used - 1);
     const uint32_t normalized = x % data->max;
     const uint32_t state = normalized / segment;
     const uint32_t rem = normalized % segment;
@@ -87,7 +87,7 @@ struct rgbw get_color(const enum color color, const uint32_t i, const uint32_t j
     case RAINBOW_BREATHING:
         return rainbow(i % data->max, data->max);
     default:
-        return data->colors[min(COLORS, data->selected)];
+        return data->colors[min(COLORS - 1, data->selected)];
     }
 }
 
