@@ -170,7 +170,7 @@ static uint8_t comets(const uint32_t i, const uint32_t j, const struct pattern_d
     if (comet == 0)
         return 255;
     const uint8_t brightness = fade(data->max - comet, data->max + 1);
-    return rng(brightness / 4, brightness);
+    return rng(1, brightness / 3);
 }
 
 static uint8_t sparkle(const uint32_t option, const uint32_t i, const uint32_t j, const uint32_t len)
