@@ -1,6 +1,7 @@
 #include "httpserver.h"
 #include "data.h"
 #include "lwip/tcp.h"
+#include "../algorithms/algorithms.h"
 #include <string.h>
 
 typedef struct TCP_CONNECT_STATE_T_
@@ -59,11 +60,6 @@ static err_t tcp_close_client_connection(TCP_CONNECT_STATE_T *con_state)
     }
     free(con_state);
     return err;
-}
-
-static inline int min(const int a, const int b)
-{
-    return a < b ? a : b;
 }
 
 static int tcp_send_with_options(struct tcp_pcb *tpcb, const char *content, const int size, const int sent, const int options)

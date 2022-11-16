@@ -22,6 +22,8 @@ enum color
     RAINBOW,
     RAINBOW_MOVING,
     RAINBOW_BREATHING,
+    COLOR_PALETTE,
+    COLOR_PALETTE_MOVING,
 };
 struct color_data
 {
@@ -36,13 +38,14 @@ enum pattern
 {
     DISABLED,
     ENABLED,
-    SPARKLE,
-    SNAKES,
     BREATHING,
     FILL,
     FILL_TWO_SIDED,
     FADE,
     FADE_MOVING,
+    SNAKES,
+    COMETS,
+    SPARKLE,
 };
 struct pattern_data
 {

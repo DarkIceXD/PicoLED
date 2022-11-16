@@ -1,4 +1,5 @@
 #include "led_effects.h"
+#include "../algorithms/algorithms.h"
 #include <stdlib.h>
 
 #define STATES 64
@@ -11,9 +12,9 @@ struct state
 
 static struct state state[STATES];
 
-static uint32_t min(const uint32_t a, const uint32_t b)
+int rng(const int from, const int to)
 {
-    return a < b ? a : b;
+    return (rand() % (to - from + 1)) + from;
 }
 
 struct rgbw rgbw_init(const uint8_t r, const uint8_t g, const uint8_t b, const uint8_t w)
@@ -68,12 +69,20 @@ static struct rgbw rainbow(const uint32_t x, const uint32_t max)
         return rgb_init(rem, 0, 0xff - rem);
 }
 
+static struct rgbw color_palette(const uint32_t x, const struct color_data *data)
+{
+    const uint32_t segment = data->max / data->used;
+    const uint32_t normalized = x % data->max;
+    const uint32_t state = normalized / segment;
+    return data->colors[state];
+}
+
 struct rgbw get_color(const enum color color, const uint32_t i, const uint32_t j, const struct color_data *data)
 {
     switch (color)
     {
     case RANDOM:
-        return rgb_init(rand(), rand(), rand());
+        return rgbw_init(rng(0, 255), rng(0, 255), rng(0, 255), rng(0, 255));
     case GRADIENT:
         return gradient_multi_color(j, data);
     case GRADIENT_MOVING:
@@ -86,46 +95,20 @@ struct rgbw get_color(const enum color color, const uint32_t i, const uint32_t j
         return rainbow((i + j) % data->max, data->max);
     case RAINBOW_BREATHING:
         return rainbow(i % data->max, data->max);
+    case COLOR_PALETTE:
+        return color_palette(j, data);
+    case COLOR_PALETTE_MOVING:
+        return color_palette((i + j) % data->max, data);
     default:
         return data->colors[min(COLORS - 1, data->selected)];
     }
 }
 
-static uint8_t sparkle(const uint32_t option, const uint32_t i, const uint32_t j, const uint32_t len)
-{
-    if (j == 0)
-    {
-        for (uint32_t x = 0; x < min(STATES, option); x++)
-        {
-            if (state[x].brightness == 0)
-            {
-                if (!(rand() % 16))
-                {
-                    state[x].j = rand() % len;
-                    state[x].brightness = 0xff / 3 + (rand() % (0xff * 2 / 3));
-                }
-            }
-            else
-            {
-                state[x].brightness--;
-            }
-        }
-    }
-
-    for (uint32_t x = 0; x < min(STATES, option); x++)
-    {
-        if (state[x].j == j)
-            return state[x].brightness;
-    }
-
-    return 0;
-}
-
 static uint8_t breathing(const uint32_t i)
 {
-    const uint32_t normalized = i % (0xff * 2);
-    const uint32_t state = normalized / 0xff;
-    const uint32_t rem = normalized % 0xff;
+    const uint32_t normalized = i % ((0xff + 1) * 2);
+    const uint32_t state = normalized / (0xff + 1);
+    const uint32_t rem = normalized % (0xff + 1);
     return state == 0 ? rem : 0xff - rem;
 }
 
@@ -170,8 +153,54 @@ static uint8_t fill_two_sided(const uint32_t i, const uint32_t j, const uint32_t
 
 static uint8_t fade(const uint32_t j, const uint32_t len)
 {
-    const uint32_t step = j * 0xff / len;
-    return step % 0xff;
+    const uint32_t step = j * (0xff + 1) / len;
+    return step % (0xff + 1);
+}
+
+static uint8_t snakes(const uint32_t i, const uint32_t j, const struct pattern_data *data)
+{
+    return (((i + j) % (data->max + data->padding)) <= data->max) ? 0xff : 0;
+}
+
+static uint8_t comets(const uint32_t i, const uint32_t j, const struct pattern_data *data)
+{
+    const uint32_t comet = (i + j) % (data->max + data->padding);
+    if (comet > data->max)
+        return 0;
+    if (comet == 0)
+        return 255;
+    const uint8_t brightness = fade(data->max - comet, data->max + 1);
+    return rng(brightness / 4, brightness);
+}
+
+static uint8_t sparkle(const uint32_t option, const uint32_t i, const uint32_t j, const uint32_t len)
+{
+    if (j == 0)
+    {
+        for (uint32_t x = 0; x < min(STATES, option); x++)
+        {
+            if (state[x].brightness == 0)
+            {
+                if (!(rand() % 16))
+                {
+                    state[x].j = rand() % len;
+                    state[x].brightness = rng(0xff / 3, 0xff);
+                }
+            }
+            else
+            {
+                state[x].brightness--;
+            }
+        }
+    }
+
+    for (uint32_t x = 0; x < min(STATES, option); x++)
+    {
+        if (state[x].j == j)
+            return state[x].brightness;
+    }
+
+    return 0;
 }
 
 uint8_t get_pattern(const enum pattern pattern, const uint32_t i, const uint32_t j, const struct pattern_data *data)
@@ -180,10 +209,6 @@ uint8_t get_pattern(const enum pattern pattern, const uint32_t i, const uint32_t
     {
     case ENABLED:
         return 0xff;
-    case SPARKLE:
-        return sparkle(data->max, i, j, data->length);
-    case SNAKES:
-        return (((i + j) % (data->max + data->padding)) < data->max) ? 0xff : 0;
     case BREATHING:
         return breathing(i);
     case FILL:
@@ -194,6 +219,12 @@ uint8_t get_pattern(const enum pattern pattern, const uint32_t i, const uint32_t
         return fade(j, data->length);
     case FADE_MOVING:
         return fade((i + j) % data->length, data->length);
+    case SNAKES:
+        return snakes(i, j, data);
+    case COMETS:
+        return comets(i, j, data);
+    case SPARKLE:
+        return sparkle(data->max, i, j, data->length);
     default:
         return 0;
     }
