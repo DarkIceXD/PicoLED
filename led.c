@@ -81,7 +81,7 @@ static const char *http_post_handler(const char *path, const char *content)
                 const int index = atoi(first_end);
                 if (index >= COLORS)
                     return 0;
-                snprintf(response, TEMP_SIZE, "#%2x%2x%2x", settings.color.colors[index].r, settings.color.colors[index].g, settings.color.colors[index].b);
+                snprintf(response, TEMP_SIZE, "#%02x%02x%02x", settings.color.colors[index].r, settings.color.colors[index].g, settings.color.colors[index].b);
                 break;
             }
             default:

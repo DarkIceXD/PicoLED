@@ -3,15 +3,21 @@
 #include "lwip/tcp.h"
 #include "../algorithms/algorithms.h"
 #include <string.h>
+#define PORT_HTTP_SERVER 80
+
+struct content
+{
+    const char *content;
+    const char *type;
+    int size;
+};
 
 typedef struct TCP_CONNECT_STATE_T_
 {
     http_server_t *server;
     struct tcp_pcb *client_pcb;
-    const char *content;
-    const char *content_type;
-    int content_size;
     int total_size;
+    struct content content;
 } TCP_CONNECT_STATE_T;
 
 static const char *extension_to_type(const char *extension)
@@ -39,6 +45,41 @@ static const char *extension_to_type(const char *extension)
         return e[i].type;
     }
     return NULL;
+}
+
+static int find_content(struct content *content, const char *path, const int path_size)
+{
+    for (int i = 0; i < sizeof(entries) / sizeof(entries[0]); i++)
+    {
+        if (strlen(entries[i].file_name) != path_size)
+            continue;
+
+        if (strncmp(entries[i].file_name, path, path_size) != 0)
+            continue;
+
+        content->content = entries[i].data;
+        content->size = entries[i].data_size;
+        content->type = extension_to_type(strchr(path + path_size - 5, '.') + 1);
+        return 1;
+    }
+
+    for (int i = 0; i < sizeof(entries) / sizeof(entries[0]); i++)
+    {
+        if (strlen(entries[i].file_name) - 11 > path_size)
+            continue;
+
+        if (!strstr(entries[i].file_name, "index.htm"))
+            continue;
+
+        if (strncmp(entries[i].file_name, path, path_size) != 0)
+            continue;
+
+        content->content = entries[i].data;
+        content->size = entries[i].data_size;
+        content->type = extension_to_type(strchr(path + path_size - 5, '.') + 1);
+        return 1;
+    }
+    return 0;
 }
 
 static err_t tcp_close_client_connection(TCP_CONNECT_STATE_T *con_state)
@@ -80,26 +121,26 @@ static int tcp_send_no_options(struct tcp_pcb *tpcb, const char *content, const 
     return tcp_send_with_options(tpcb, content, size, sent, 0);
 }
 
-static int send_200_packet(struct tcp_pcb *tpcb, const char *content, const char *content_type, const int size, int sent)
+static int send_200_packet(struct tcp_pcb *tpcb, const struct content *content, int sent)
 {
     const int buffer_start = tpcb->snd_buf;
     static const char header[] = "HTTP/1.0 200 OK\r\nContent-Length: ";
     static const int header_len = sizeof(header) - 1;
     sent = tcp_send_no_options(tpcb, header, header_len, sent);
     char len[16];
-    snprintf(len, 16, "%d", size);
+    snprintf(len, 16, "%d", content->size);
     sent = tcp_send_with_options(tpcb, len, strlen(len), sent, TCP_WRITE_FLAG_COPY);
-    if (content_type)
+    if (content->type)
     {
         static const char type[] = "\r\nContent-Type: ";
         static const int type_len = sizeof(type) - 1;
         sent = tcp_send_no_options(tpcb, type, type_len, sent);
-        sent = tcp_send_no_options(tpcb, content_type, strlen(content_type), sent);
+        sent = tcp_send_no_options(tpcb, content->type, strlen(content->type), sent);
     }
     static const char header2[] = "\r\nConnection: close\r\n\r\n";
     static const int header2_len = sizeof(header2) - 1;
     sent = tcp_send_no_options(tpcb, header2, header2_len, sent);
-    sent = tcp_send_no_options(tpcb, content, size, sent);
+    sent = tcp_send_no_options(tpcb, content->content, content->size, sent);
     tcp_output(tpcb);
     return buffer_start - tpcb->snd_buf;
 }
@@ -127,7 +168,7 @@ static err_t send_redirect_packet(struct tcp_pcb *tpcb, const char *location)
 static err_t tcp_server_sent(void *arg, struct tcp_pcb *tpcb, u16_t len)
 {
     TCP_CONNECT_STATE_T *con_state = (TCP_CONNECT_STATE_T *)arg;
-    con_state->total_size += send_200_packet(tpcb, con_state->content, con_state->content_type, con_state->content_size, con_state->total_size);
+    con_state->total_size += send_200_packet(tpcb, &con_state->content, con_state->total_size);
     return ERR_OK;
 }
 
@@ -135,10 +176,8 @@ static err_t tcp_server_recv(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, er
 {
     TCP_CONNECT_STATE_T *con_state = (TCP_CONNECT_STATE_T *)arg;
     if (!p)
-    {
-        printf("!p: %p\n", con_state);
         return tcp_close_client_connection(con_state);
-    }
+
     if (p->tot_len > 0)
     {
         ((char *)p->payload)[p->len] = '\0';
@@ -149,11 +188,11 @@ static err_t tcp_server_recv(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, er
             {
                 char *content_start = strstr(path_start, "\r\n\r\n");
                 if (content_start)
-                    con_state->content = con_state->server->post_handler(path_start, content_start + 4);
-                if (con_state->content)
+                    con_state->content.content = con_state->server->post_handler(path_start, content_start + 4);
+                if (con_state->content.content)
                 {
-                    con_state->content_size = strlen(con_state->content);
-                    con_state->total_size = send_200_packet(tpcb, con_state->content, NULL, con_state->content_size, 0);
+                    con_state->content.size = strlen(con_state->content.content);
+                    con_state->total_size = send_200_packet(tpcb, &con_state->content, 0);
                 }
                 else
                     send_404_packet(tpcb);
@@ -164,44 +203,10 @@ static err_t tcp_server_recv(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, er
                 if (path_end)
                 {
                     const int path_size = path_end - path_start;
-                    for (int i = 0; i < sizeof(entries) / sizeof(entries[0]); i++)
-                    {
-                        if (strlen(entries[i].file_name) != path_size)
-                            continue;
-
-                        if (strncmp(entries[i].file_name, path_start, path_size) != 0)
-                            continue;
-
-                        con_state->content = entries[i].data;
-                        con_state->content_size = entries[i].data_size;
-                        con_state->content_type = extension_to_type(strchr(path_end - 5, '.') + 1);
-                        break;
-                    }
-                    if (con_state->content)
-                        con_state->total_size = send_200_packet(tpcb, con_state->content, con_state->content_type, con_state->content_size, 0);
+                    if (find_content(&con_state->content, path_start, path_size))
+                        con_state->total_size = send_200_packet(tpcb, &con_state->content, 0);
                     else
-                    {
-                        for (int i = 0; i < sizeof(entries) / sizeof(entries[0]); i++)
-                        {
-                            if (strlen(entries[i].file_name) - 11 > path_size)
-                                continue;
-
-                            if (!strstr(entries[i].file_name, "index.htm"))
-                                continue;
-
-                            if (strncmp(entries[i].file_name, path_start, path_size) != 0)
-                                continue;
-
-                            con_state->content = entries[i].data;
-                            con_state->content_size = entries[i].data_size;
-                            con_state->content_type = extension_to_type(strchr(path_end - 5, '.') + 1);
-                            break;
-                        }
-                        if (con_state->content)
-                            con_state->total_size = send_200_packet(tpcb, con_state->content, con_state->content_type, con_state->content_size, 0);
-                        else
-                            send_redirect_packet(tpcb, ipaddr_ntoa(&con_state->server->ip));
-                    }
+                        send_redirect_packet(tpcb, ipaddr_ntoa(&con_state->server->ip));
                 }
             }
         }
@@ -230,10 +235,10 @@ static err_t tcp_server_accept(void *arg, struct tcp_pcb *client_pcb, err_t err)
 
     con_state->server = server;
     con_state->client_pcb = client_pcb;
-    con_state->content = NULL;
-    con_state->content_type = NULL;
-    con_state->content_size = 0;
     con_state->total_size = 0;
+    con_state->content.content = NULL;
+    con_state->content.type = NULL;
+    con_state->content.size = 0;
 
     tcp_arg(client_pcb, con_state);
     tcp_sent(client_pcb, tcp_server_sent);
@@ -244,12 +249,11 @@ static err_t tcp_server_accept(void *arg, struct tcp_pcb *client_pcb, err_t err)
 
 void http_server_init(http_server_t *d, ip_addr_t *ip, http_api_handler post_handler)
 {
-    static const int port = 80;
     d->pcb = tcp_new();
     if (!d->pcb)
         return;
 
-    err_t err = tcp_bind(d->pcb, NULL, port);
+    err_t err = tcp_bind(d->pcb, NULL, PORT_HTTP_SERVER);
     if (err)
         return;
 
