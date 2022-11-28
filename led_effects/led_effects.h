@@ -12,6 +12,26 @@ struct rgbw rgbw_init(const uint8_t r, const uint8_t g, const uint8_t b, const u
 struct rgbw rgb_init(const uint8_t r, const uint8_t g, const uint8_t b);
 struct rgbw rgbw_set_brightness(const uint8_t brightness, const struct rgbw s);
 
+enum pattern
+{
+    DISABLED,
+    ENABLED,
+    BREATHING,
+    FILL,
+    FILL_TWO_SIDED,
+    FADE,
+    FADE_MOVING,
+    SNAKES,
+    COMETS,
+    SPARKLE,
+};
+struct pattern_data
+{
+    uint32_t padding;
+    uint32_t max;
+};
+uint8_t get_pattern(const enum pattern pattern, const uint32_t length, const uint32_t i, const uint32_t j, const struct pattern_data *data);
+
 enum color
 {
     SELECTED,
@@ -33,26 +53,5 @@ struct color_data
     uint32_t max;
 };
 struct rgbw get_color(const enum color color, const uint32_t i, const uint32_t j, const struct color_data *data);
-
-enum pattern
-{
-    DISABLED,
-    ENABLED,
-    BREATHING,
-    FILL,
-    FILL_TWO_SIDED,
-    FADE,
-    FADE_MOVING,
-    SNAKES,
-    COMETS,
-    SPARKLE,
-};
-struct pattern_data
-{
-    uint32_t padding;
-    uint32_t max;
-    uint32_t length;
-};
-uint8_t get_pattern(const enum pattern pattern, const uint32_t i, const uint32_t j, const struct pattern_data *data);
 
 #endif

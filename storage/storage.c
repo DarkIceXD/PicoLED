@@ -2,7 +2,7 @@
 #include "hardware/flash.h"
 #include <string.h>
 
-#define MAGIC 0x77
+#define MAGIC 0x55
 #define FLASH_TARGET_OFFSET (PICO_FLASH_SIZE_BYTES - FLASH_SECTOR_SIZE)
 
 static int find_unused_page()
