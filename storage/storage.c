@@ -1,8 +1,9 @@
 #include "storage.h"
 #include "hardware/flash.h"
+#include "hardware/sync.h"
 #include <string.h>
 
-#define MAGIC 0x55
+#define MAGIC 0x99
 #define FLASH_TARGET_OFFSET (PICO_FLASH_SIZE_BYTES - FLASH_SECTOR_SIZE)
 
 static int find_unused_page()
@@ -42,5 +43,7 @@ void save(void *buffer, const uint32_t size)
     memset(flash_data, 0xff, FLASH_PAGE_SIZE);
     flash_data[0] = MAGIC;
     memcpy(flash_data + 1, buffer, size);
+    const uint32_t ints = save_and_disable_interrupts();
     flash_range_program(FLASH_TARGET_OFFSET + FLASH_PAGE_SIZE * page, flash_data, FLASH_PAGE_SIZE);
+    restore_interrupts(ints);
 }

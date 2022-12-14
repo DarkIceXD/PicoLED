@@ -101,18 +101,15 @@ static uint8_t fade(const uint32_t j, const uint32_t len)
 
 static uint8_t snakes(const uint32_t i, const uint32_t j, const struct pattern_data *data)
 {
-    return (((i + j) % (data->max + data->padding)) <= data->max) ? 0xff : 0;
+    return (((i + j) % (data->max + data->padding)) < data->max) ? 0xff : 0;
 }
 
-static uint8_t comets(const uint32_t i, const uint32_t j, const struct pattern_data *data)
+static uint8_t snakes_faded(const uint32_t i, const uint32_t j, const struct pattern_data *data)
 {
-    const uint32_t comet = (i + j) % (data->max + data->padding);
-    if (comet > data->max)
-        return 0;
-    if (comet == 0)
-        return 255;
-    const uint8_t brightness = fade(data->max - comet, data->max + 1);
-    return rng(1, brightness / 3);
+    const uint32_t faded_snake = (i + j) % (data->max + data->padding);
+    if (faded_snake < data->max)
+        return fade(data->max - faded_snake, data->max + 1);
+    return 0;
 }
 
 static uint8_t sparkle(const uint32_t option, const uint32_t i, const uint32_t j, const uint32_t len)
@@ -163,8 +160,8 @@ uint8_t get_pattern(const enum pattern pattern, const uint32_t length, const uin
         return fade((i + j) % length, length);
     case SNAKES:
         return snakes(i, j, data);
-    case COMETS:
-        return comets(i, j, data);
+    case SNAKES_FADED:
+        return snakes_faded(i, j, data);
     case SPARKLE:
         return sparkle(data->max, i, j, length);
     default:

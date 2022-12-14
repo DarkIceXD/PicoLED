@@ -13,21 +13,25 @@
 
 struct settings
 {
+    char ap_name[32 + 1];
+    char password[64 + 1];
     uint32_t delay;
     uint32_t length;
     uint8_t brightness;
+    uint8_t reverse;
     enum pattern p;
     struct pattern_data pattern;
     enum color c;
     struct color_data color;
-    char ap_name[100];
-    char password[100];
 };
 static struct settings settings = {
+    .ap_name = "DarkLEDs",
+    .password = "password",
     .delay = 40,
     .length = 300,
     .brightness = 100,
-    .p = SNAKES,
+    .reverse = 0,
+    .p = SNAKES_FADED,
     .pattern.padding = 20,
     .pattern.max = 30,
     .c = RAINBOW,
@@ -36,12 +40,11 @@ static struct settings settings = {
     .color.selected = 0,
     .color.used = 2,
     .color.max = 300,
-    .ap_name = "DarkLEDs",
-    .password = "password",
 };
 
 static const char *http_post_handler(const char *path, const char *content)
 {
+    const char delim = ';';
     if (strncmp(path, "/api/get", 8) == 0)
     {
         static char response[TEMP_SIZE];
@@ -57,20 +60,23 @@ static const char *http_post_handler(const char *path, const char *content)
             snprintf(response, TEMP_SIZE, "%u", settings.brightness);
             break;
         case 3:
-            snprintf(response, TEMP_SIZE, "%u", settings.p);
+            snprintf(response, TEMP_SIZE, "%u", settings.reverse);
             break;
         case 4:
-            snprintf(response, TEMP_SIZE, "%lu", settings.pattern.padding);
+            snprintf(response, TEMP_SIZE, "%u", settings.p);
             break;
         case 5:
-            snprintf(response, TEMP_SIZE, "%lu", settings.pattern.max);
+            snprintf(response, TEMP_SIZE, "%lu", settings.pattern.padding);
             break;
         case 6:
-            snprintf(response, TEMP_SIZE, "%u", settings.c);
+            snprintf(response, TEMP_SIZE, "%lu", settings.pattern.max);
             break;
         case 7:
+            snprintf(response, TEMP_SIZE, "%u", settings.c);
+            break;
+        case 8:
         {
-            char *first_end = strchr(content, ',');
+            char *first_end = strchr(content, delim);
             if (!first_end)
                 return 0;
             first_end += 1;
@@ -84,7 +90,7 @@ static const char *http_post_handler(const char *path, const char *content)
                 break;
             case 2:
             {
-                first_end = strchr(first_end, ',');
+                first_end = strchr(first_end, delim);
                 if (!first_end)
                     return 0;
                 first_end += 1;
@@ -103,13 +109,13 @@ static const char *http_post_handler(const char *path, const char *content)
             break;
         }
         break;
-        case 8:
+        case 9:
             snprintf(response, TEMP_SIZE, "%lu", settings.color.max);
             break;
-        case 9:
+        case 10:
             snprintf(response, TEMP_SIZE, "%s", settings.ap_name);
             break;
-        case 10:
+        case 11:
             snprintf(response, TEMP_SIZE, "%s", settings.password);
             break;
         default:
@@ -119,7 +125,7 @@ static const char *http_post_handler(const char *path, const char *content)
     }
     else
     {
-        char *first_end = strchr(content, ',');
+        char *first_end = strchr(content, delim);
         if (!first_end)
             return 0;
         first_end += 1;
@@ -135,21 +141,24 @@ static const char *http_post_handler(const char *path, const char *content)
             settings.brightness = atoi(first_end);
             break;
         case 3:
-            settings.p = atoi(first_end);
+            settings.reverse = atoi(first_end);
             break;
         case 4:
-            settings.pattern.padding = atoi(first_end);
+            settings.p = atoi(first_end);
             break;
         case 5:
-            settings.pattern.max = atoi(first_end);
+            settings.pattern.padding = atoi(first_end);
             break;
         case 6:
-            settings.c = atoi(first_end);
+            settings.pattern.max = atoi(first_end);
             break;
         case 7:
+            settings.c = atoi(first_end);
+            break;
+        case 8:
         {
             const int option = atoi(first_end);
-            first_end = strchr(first_end, ',');
+            first_end = strchr(first_end, delim);
             if (!first_end)
                 return 0;
             first_end += 1;
@@ -176,7 +185,7 @@ static const char *http_post_handler(const char *path, const char *content)
                 const int index = atoi(first_end);
                 if (index < 0 || index >= COLORS)
                     return 0;
-                first_end = strchr(first_end, ',');
+                first_end = strchr(first_end, delim);
                 if (!first_end)
                     return 0;
                 first_end += 1;
@@ -190,16 +199,16 @@ static const char *http_post_handler(const char *path, const char *content)
             }
             break;
         }
-        case 8:
+        case 9:
             settings.color.max = atoi(first_end);
             break;
-        case 9:
+        case 10:
             strcpy(settings.ap_name, first_end);
             break;
-        case 10:
+        case 11:
             strcpy(settings.password, first_end);
             break;
-        case 11:
+        case 12:
             save(&settings, sizeof(settings));
             break;
         default:
@@ -232,13 +241,14 @@ void core1_entry()
     const int gpio_pin = 2;
     const bool is_rgbw = false;
     ws2812_program_init(pio, sm, offset, gpio_pin, 800000, is_rgbw);
-    for (uint32_t i = 0;; ++i)
+    for (uint32_t i = 0;; i++)
     {
         for (uint32_t j = 0; j < settings.length; j++)
         {
-            const uint8_t pattern = get_pattern(settings.p, settings.length, i, j, &settings.pattern);
+            const uint32_t adjusted_j = !settings.reverse ? j : settings.length - 1 - j;
+            const uint8_t pattern = get_pattern(settings.p, settings.length, i, adjusted_j, &settings.pattern);
             if (pattern)
-                put_pixel(rgbw_to_grbw(rgbw_set_brightness(settings.brightness, rgbw_set_brightness(pattern, get_color(settings.c, i, j, &settings.color)))));
+                put_pixel(rgbw_to_grbw(rgbw_set_brightness(settings.brightness, rgbw_set_brightness(pattern, get_color(settings.c, i, adjusted_j, &settings.color)))));
             else
                 put_pixel(0);
         }

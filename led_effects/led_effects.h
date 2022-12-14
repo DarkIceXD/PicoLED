@@ -22,7 +22,7 @@ enum pattern
     FADE,
     FADE_MOVING,
     SNAKES,
-    COMETS,
+    SNAKES_FADED,
     SPARKLE,
 };
 struct pattern_data

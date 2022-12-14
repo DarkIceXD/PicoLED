@@ -12,40 +12,13 @@ struct content
     int size;
 };
 
-typedef struct TCP_CONNECT_STATE_T_
+typedef struct http_connection_state_t_
 {
     http_server_t *server;
     struct tcp_pcb *client_pcb;
     int total_size;
     struct content content;
-} TCP_CONNECT_STATE_T;
-
-static const char *extension_to_type(const char *extension)
-{
-    struct extension
-    {
-        const char *file_extension;
-        const char *type;
-    };
-    static const struct extension e[] = {
-        {"txt", "text/plain"},
-        {"htm", "text/html"},
-        {"html", "text/html"},
-        {"js", "text/javascript"},
-        {"css", "text/css"},
-        {"png", "image/png"},
-        {"jpg", "image/jpeg"},
-        {"svg", "image/svg+xml"},
-    };
-    for (int i = 0; i < sizeof(e) / sizeof(e[0]); i++)
-    {
-        if (strncmp(extension, e[i].file_extension, strlen(e[i].file_extension)))
-            continue;
-
-        return e[i].type;
-    }
-    return NULL;
-}
+} http_connection_state_t;
 
 static int find_content(struct content *content, const char *path, const int path_size)
 {
@@ -59,7 +32,7 @@ static int find_content(struct content *content, const char *path, const int pat
 
         content->content = entries[i].data;
         content->size = entries[i].data_size;
-        content->type = extension_to_type(strchr(path + path_size - 5, '.') + 1);
+        content->type = entries[i].mime_type;
         return 1;
     }
 
@@ -76,13 +49,13 @@ static int find_content(struct content *content, const char *path, const int pat
 
         content->content = entries[i].data;
         content->size = entries[i].data_size;
-        content->type = extension_to_type(strchr(path + path_size - 5, '.') + 1);
+        content->type = entries[i].mime_type;
         return 1;
     }
     return 0;
 }
 
-static err_t tcp_close_client_connection(TCP_CONNECT_STATE_T *con_state)
+static err_t tcp_close_client_connection(http_connection_state_t *con_state)
 {
     err_t err = ERR_OK;
     if (con_state->client_pcb)
@@ -121,7 +94,7 @@ static int tcp_send_no_options(struct tcp_pcb *tpcb, const char *content, const 
     return tcp_send_with_options(tpcb, content, size, sent, 0);
 }
 
-static int send_200_packet(struct tcp_pcb *tpcb, const struct content *content, int sent)
+static int send_200(struct tcp_pcb *tpcb, const struct content *content, int sent)
 {
     const int buffer_start = tpcb->snd_buf;
     static const char header[] = "HTTP/1.0 200 OK\r\nContent-Length: ";
@@ -145,7 +118,7 @@ static int send_200_packet(struct tcp_pcb *tpcb, const struct content *content, 
     return buffer_start - tpcb->snd_buf;
 }
 
-static err_t send_404_packet(struct tcp_pcb *tpcb)
+static err_t send_404(struct tcp_pcb *tpcb)
 {
     static const char str404[] = "HTTP/1.0 404 Not Found\r\nContent-Type: text/plain\r\nContent-Length: 12\r\nConnection: close\r\n\r\nnot found :/";
     static const int len = sizeof(str404) - 1;
@@ -153,7 +126,7 @@ static err_t send_404_packet(struct tcp_pcb *tpcb)
     return tcp_output(tpcb);
 }
 
-static err_t send_redirect_packet(struct tcp_pcb *tpcb, const char *location)
+static err_t send_redirect(struct tcp_pcb *tpcb, const char *location)
 {
     static const char header[] = "HTTP/1.0 302 Redirect\r\nLocation: http://";
     static const int header_len = sizeof(header) - 1;
@@ -167,14 +140,14 @@ static err_t send_redirect_packet(struct tcp_pcb *tpcb, const char *location)
 
 static err_t tcp_server_sent(void *arg, struct tcp_pcb *tpcb, u16_t len)
 {
-    TCP_CONNECT_STATE_T *con_state = (TCP_CONNECT_STATE_T *)arg;
-    con_state->total_size += send_200_packet(tpcb, &con_state->content, con_state->total_size);
+    http_connection_state_t *con_state = (http_connection_state_t *)arg;
+    con_state->total_size += send_200(tpcb, &con_state->content, con_state->total_size);
     return ERR_OK;
 }
 
 static err_t tcp_server_recv(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t err)
 {
-    TCP_CONNECT_STATE_T *con_state = (TCP_CONNECT_STATE_T *)arg;
+    http_connection_state_t *con_state = (http_connection_state_t *)arg;
     if (!p)
         return tcp_close_client_connection(con_state);
 
@@ -192,10 +165,10 @@ static err_t tcp_server_recv(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, er
                 if (con_state->content.content)
                 {
                     con_state->content.size = strlen(con_state->content.content);
-                    con_state->total_size = send_200_packet(tpcb, &con_state->content, 0);
+                    con_state->total_size = send_200(tpcb, &con_state->content, 0);
                 }
                 else
-                    send_404_packet(tpcb);
+                    send_404(tpcb);
             }
             else
             {
@@ -204,9 +177,9 @@ static err_t tcp_server_recv(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, er
                 {
                     const int path_size = path_end - path_start;
                     if (find_content(&con_state->content, path_start, path_size))
-                        con_state->total_size = send_200_packet(tpcb, &con_state->content, 0);
+                        con_state->total_size = send_200(tpcb, &con_state->content, 0);
                     else
-                        send_redirect_packet(tpcb, ipaddr_ntoa(&con_state->server->ip));
+                        send_redirect(tpcb, ipaddr_ntoa(&con_state->server->ip));
                 }
             }
         }
@@ -218,7 +191,7 @@ static err_t tcp_server_recv(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, er
 
 static void tcp_server_err(void *arg, err_t err)
 {
-    TCP_CONNECT_STATE_T *con_state = (TCP_CONNECT_STATE_T *)arg;
+    http_connection_state_t *con_state = (http_connection_state_t *)arg;
     if (err != ERR_ABRT)
         tcp_close_client_connection(con_state);
 }
@@ -229,7 +202,7 @@ static err_t tcp_server_accept(void *arg, struct tcp_pcb *client_pcb, err_t err)
     if (err != ERR_OK || client_pcb == NULL)
         return err;
 
-    TCP_CONNECT_STATE_T *con_state = malloc(sizeof(TCP_CONNECT_STATE_T));
+    http_connection_state_t *con_state = malloc(sizeof(http_connection_state_t));
     if (!con_state)
         return ERR_MEM;
 
