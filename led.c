@@ -35,8 +35,8 @@ static struct settings settings = {
     .pattern.padding = 20,
     .pattern.max = 30,
     .c = RAINBOW,
-    .color.colors[0] = {.r = 255, .g = 255, .b = 255, .w = 0},
-    .color.colors[1] = {.r = 255, .g = 255, .b = 255, .w = 0},
+    .color.colors[0] = {.r = 255, .g = 255, .b = 255},
+    .color.colors[1] = {.r = 255, .g = 255, .b = 255},
     .color.selected = 0,
     .color.used = 2,
     .color.max = 300,
@@ -223,14 +223,15 @@ static inline void put_pixel(const uint32_t pixel)
     pio_sm_put_blocking(pio0, 0, pixel);
 }
 
-static inline uint32_t grbw(const uint8_t r, const uint8_t g, const uint8_t b, const uint8_t w)
+static inline uint32_t grbw(const uint8_t r, const uint8_t g, const uint8_t b)
 {
+    const uint8_t w = 0;
     return ((uint32_t)(r) << 16) | ((uint32_t)(g) << 24) | ((uint32_t)(b) << 8) | ((uint32_t)(w) << 0);
 }
 
-static inline uint32_t rgbw_to_grbw(const struct rgbw s)
+static inline uint32_t rgbw_to_grbw(const struct rgb s)
 {
-    return grbw(s.r, s.g, s.b, s.w);
+    return grbw(s.r, s.g, s.b);
 }
 
 void core1_entry()

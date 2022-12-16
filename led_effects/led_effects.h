@@ -3,14 +3,13 @@
 #include "pico/stdlib.h"
 #define COLORS 8
 
-struct rgbw
+struct rgb
 {
-    uint8_t r, g, b, w;
+    uint8_t r, g, b;
 };
 
-struct rgbw rgbw_init(const uint8_t r, const uint8_t g, const uint8_t b, const uint8_t w);
-struct rgbw rgb_init(const uint8_t r, const uint8_t g, const uint8_t b);
-struct rgbw rgbw_set_brightness(const uint8_t brightness, const struct rgbw s);
+struct rgb rgb_init(const uint8_t r, const uint8_t g, const uint8_t b);
+struct rgb rgbw_set_brightness(const uint8_t brightness, const struct rgb s);
 
 enum pattern
 {
@@ -47,11 +46,11 @@ enum color
 };
 struct color_data
 {
-    struct rgbw colors[COLORS];
+    struct rgb colors[COLORS];
     uint8_t selected;
     uint8_t used;
     uint32_t max;
 };
-struct rgbw get_color(const enum color color, const uint32_t i, const uint32_t j, const struct color_data *data);
+struct rgb get_color(const enum color color, const uint32_t i, const uint32_t j, const struct color_data *data);
 
 #endif

@@ -12,19 +12,14 @@ struct state
 
 static struct state state[STATES];
 
-int rng(const int from, const int to)
+static int rng(const int from, const int to)
 {
     return (rand() % (to - from + 1)) + from;
 }
 
-struct rgbw rgbw_init(const uint8_t r, const uint8_t g, const uint8_t b, const uint8_t w)
+struct rgb rgb_init(const uint8_t r, const uint8_t g, const uint8_t b)
 {
-    return (struct rgbw){.r = r, .g = g, .b = b, .w = w};
-}
-
-struct rgbw rgb_init(const uint8_t r, const uint8_t g, const uint8_t b)
-{
-    return rgbw_init(r, g, b, 0);
+    return (struct rgb){.r = r, .g = g, .b = b};
 }
 
 static inline int scale(const uint8_t a, const uint8_t b, const int32_t s, const int32_t max)
@@ -32,18 +27,17 @@ static inline int scale(const uint8_t a, const uint8_t b, const int32_t s, const
     return a + (b - a) * s / max;
 }
 
-static struct rgbw gradient(const struct rgbw a, const struct rgbw b, const uint32_t x, const uint32_t max)
+static struct rgb gradient(const struct rgb a, const struct rgb b, const uint32_t x, const uint32_t max)
 {
-    return rgbw_init(
+    return rgb_init(
         scale(a.r, b.r, x, max),
         scale(a.g, b.g, x, max),
-        scale(a.b, b.b, x, max),
-        scale(a.w, b.w, x, max));
+        scale(a.b, b.b, x, max));
 }
 
-struct rgbw rgbw_set_brightness(const uint8_t brightness, const struct rgbw s)
+struct rgb rgbw_set_brightness(const uint8_t brightness, const struct rgb s)
 {
-    return gradient(rgbw_init(0, 0, 0, 0), s, brightness, 0xff);
+    return gradient(rgb_init(0, 0, 0), s, brightness, 0xff);
 }
 
 static uint8_t breathing(const uint32_t i)
@@ -112,15 +106,16 @@ static uint8_t snakes_faded(const uint32_t i, const uint32_t j, const struct pat
     return 0;
 }
 
-static uint8_t sparkle(const uint32_t option, const uint32_t i, const uint32_t j, const uint32_t len)
+static uint8_t sparkle(const uint32_t i, const uint32_t j, const uint32_t len, const struct pattern_data *data)
 {
+    const uint32_t state_length = min(STATES, data->max);
     if (j == 0)
     {
-        for (uint32_t x = 0; x < min(STATES, option); x++)
+        for (uint32_t x = 0; x < state_length; x++)
         {
             if (state[x].brightness == 0)
             {
-                if (!(rand() % 16))
+                if (!(rand() % data->padding))
                 {
                     state[x].j = rand() % len;
                     state[x].brightness = rng(0xff / 3, 0xff);
@@ -133,7 +128,7 @@ static uint8_t sparkle(const uint32_t option, const uint32_t i, const uint32_t j
         }
     }
 
-    for (uint32_t x = 0; x < min(STATES, option); x++)
+    for (uint32_t x = 0; x < state_length; x++)
     {
         if (state[x].j == j)
             return state[x].brightness;
@@ -163,13 +158,13 @@ uint8_t get_pattern(const enum pattern pattern, const uint32_t length, const uin
     case SNAKES_FADED:
         return snakes_faded(i, j, data);
     case SPARKLE:
-        return sparkle(data->max, i, j, length);
+        return sparkle(i, j, length, data);
     default:
         return 0;
     }
 }
 
-static struct rgbw gradient_multi_color(const uint32_t x, const struct color_data *data)
+static struct rgb gradient_multi_color(const uint32_t x, const struct color_data *data)
 {
     const uint32_t segment = data->max / (data->used - 1);
     const uint32_t normalized = x % data->max;
@@ -178,7 +173,7 @@ static struct rgbw gradient_multi_color(const uint32_t x, const struct color_dat
     return gradient(data->colors[state], data->colors[state + 1], rem, segment);
 }
 
-static struct rgbw rainbow(const uint32_t x, const uint32_t max)
+static struct rgb rainbow(const uint32_t x, const uint32_t max)
 {
     const uint32_t step = x * (0xff * 3) / max;
     const uint32_t normalized = step % (0xff * 3);
@@ -192,7 +187,7 @@ static struct rgbw rainbow(const uint32_t x, const uint32_t max)
         return rgb_init(rem, 0, 0xff - rem);
 }
 
-static struct rgbw color_palette(const uint32_t x, const struct color_data *data)
+static struct rgb color_palette(const uint32_t x, const struct color_data *data)
 {
     const uint32_t segment = data->max / data->used;
     const uint32_t normalized = x % data->max;
@@ -200,12 +195,12 @@ static struct rgbw color_palette(const uint32_t x, const struct color_data *data
     return data->colors[state];
 }
 
-struct rgbw get_color(const enum color color, const uint32_t i, const uint32_t j, const struct color_data *data)
+struct rgb get_color(const enum color color, const uint32_t i, const uint32_t j, const struct color_data *data)
 {
     switch (color)
     {
     case RANDOM:
-        return rgbw_init(rng(0, 255), rng(0, 255), rng(0, 255), rng(0, 255));
+        return rgb_init(rng(0, 255), rng(0, 255), rng(0, 255));
     case GRADIENT:
         return gradient_multi_color(j, data);
     case GRADIENT_MOVING:
