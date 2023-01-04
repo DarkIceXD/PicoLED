@@ -29,7 +29,7 @@ struct pattern_data
     uint32_t padding;
     uint32_t max;
 };
-uint8_t get_pattern(const enum pattern pattern, const uint32_t length, const uint32_t i, const uint32_t j, const struct pattern_data *data);
+uint8_t get_pattern(const enum pattern pattern, const uint32_t length, const uint32_t t, const uint32_t i, const struct pattern_data *data);
 
 enum color
 {
@@ -43,6 +43,7 @@ enum color
     RAINBOW_BREATHING,
     COLOR_PALETTE,
     COLOR_PALETTE_MOVING,
+    COLOR_WIPE,
 };
 struct color_data
 {
@@ -51,6 +52,6 @@ struct color_data
     uint8_t used;
     uint32_t max;
 };
-struct rgb get_color(const enum color color, const uint32_t i, const uint32_t j, const struct color_data *data);
+struct rgb get_color(const enum color color, const uint32_t t, const uint32_t i, const struct color_data *data);
 
 #endif
