@@ -242,14 +242,14 @@ void core1_entry()
     const int gpio_pin = 2;
     const bool is_rgbw = false;
     ws2812_program_init(pio, sm, offset, gpio_pin, 800000, is_rgbw);
-    for (uint32_t i = 0;; i++)
+    for (uint32_t t = 0;; t++)
     {
-        for (uint32_t j = 0; j < settings.length; j++)
+        for (uint32_t i = 0; i < settings.length; i++)
         {
-            const uint32_t adjusted_j = !settings.reverse ? j : settings.length - 1 - j;
-            const uint8_t pattern = get_pattern(settings.p, settings.length, i, adjusted_j, &settings.pattern);
+            const uint32_t adjusted_i = !settings.reverse ? i : settings.length - 1 - i;
+            const uint8_t pattern = get_pattern(settings.p, settings.length, t, adjusted_i, &settings.pattern);
             if (pattern)
-                put_pixel(rgbw_to_grbw(rgbw_set_brightness(settings.brightness, rgbw_set_brightness(pattern, get_color(settings.c, i, adjusted_j, &settings.color)))));
+                put_pixel(rgbw_to_grbw(rgbw_set_brightness(settings.brightness, rgbw_set_brightness(pattern, get_color(settings.c, t, adjusted_i, &settings.color)))));
             else
                 put_pixel(0);
         }
