@@ -175,7 +175,7 @@ static struct rgb gradient_multi_color(const uint32_t x, const struct color_data
 
 static struct rgb rainbow(const uint32_t x, const uint32_t max)
 {
-    const uint32_t step = x * (0xff * 3) / max;
+    const uint32_t step = (x % max) * (0xff * 3) / max;
     const uint32_t normalized = step % (0xff * 3);
     const uint8_t state = normalized / 0xff;
     const uint8_t rem = normalized % 0xff;
@@ -199,7 +199,7 @@ static struct rgb color_wipe(const uint32_t t, const uint32_t i, const struct co
 {
     const uint32_t state = t / data->max;
     const uint32_t rem = t % data->max;
-    if (i < rem)
+    if ((i % data->max) < rem)
         return data->colors[(state + 1) % data->used];
     return data->colors[state % data->used];
 }
@@ -213,19 +213,19 @@ struct rgb get_color(const enum color color, const uint32_t t, const uint32_t i,
     case GRADIENT:
         return gradient_multi_color(i, data);
     case GRADIENT_MOVING:
-        return gradient_multi_color((t + i) % data->max, data);
+        return gradient_multi_color(t + i, data);
     case GRADIENT_BREATHING:
-        return gradient_multi_color(t % data->max, data);
+        return gradient_multi_color(t, data);
     case RAINBOW:
         return rainbow(i, data->max);
     case RAINBOW_MOVING:
-        return rainbow((t + i) % data->max, data->max);
+        return rainbow(t + i, data->max);
     case RAINBOW_BREATHING:
-        return rainbow(t % data->max, data->max);
+        return rainbow(t, data->max);
     case COLOR_PALETTE:
         return color_palette(i, data);
     case COLOR_PALETTE_MOVING:
-        return color_palette((t + i) % data->max, data);
+        return color_palette(t + i, data);
     case COLOR_WIPE:
         return color_wipe(t, i, data);
     default:
