@@ -1,3 +1,9 @@
+/**
+ * Copyright (c) 2022 Raspberry Pi (Trading) Ltd.
+ *
+ * SPDX-License-Identifier: BSD-3-Clause
+ */
+
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
@@ -102,7 +108,6 @@ static int dns_socket_sendto(struct udp_pcb **udp, const void *buf, size_t len, 
 static void dns_server_process(void *arg, struct udp_pcb *upcb, struct pbuf *p, const ip_addr_t *src_addr, u16_t src_port)
 {
     dns_server_t *d = arg;
-
     uint8_t dns_msg[MAX_DNS_MSG_SIZE];
     dns_header_t *dns_hdr = (dns_header_t *)dns_msg;
 
@@ -136,6 +141,7 @@ static void dns_server_process(void *arg, struct udp_pcb *upcb, struct pbuf *p, 
     if (question_count < 1)
         goto ignore_request;
 
+    // Print the question
     const uint8_t *question_ptr_start = dns_msg + sizeof(dns_header_t);
     const uint8_t *question_ptr_end = dns_msg + msg_len;
     const uint8_t *question_ptr = question_ptr_start;
@@ -151,7 +157,6 @@ static void dns_server_process(void *arg, struct udp_pcb *upcb, struct pbuf *p, 
             int label_len = *question_ptr++;
             if (label_len > 63)
                 goto ignore_request;
-
             question_ptr += label_len;
         }
     }
@@ -193,6 +198,7 @@ static void dns_server_process(void *arg, struct udp_pcb *upcb, struct pbuf *p, 
     dns_hdr->authority_record_count = 0;
     dns_hdr->additional_record_count = 0;
 
+    // Send the reply
     dns_socket_sendto(&d->udp, &dns_msg, answer_ptr - dns_msg, src_addr, src_port);
 
 ignore_request:

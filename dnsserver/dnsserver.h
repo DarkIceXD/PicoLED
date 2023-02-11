@@ -1,3 +1,9 @@
+/**
+ * Copyright (c) 2022 Raspberry Pi (Trading) Ltd.
+ *
+ * SPDX-License-Identifier: BSD-3-Clause
+ */
+
 #ifndef _DNSSERVER_H_
 #define _DNSSERVER_H_
 
