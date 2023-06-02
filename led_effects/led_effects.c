@@ -106,9 +106,9 @@ static uint8_t snakes_faded(const uint32_t t, const uint32_t i, const struct pat
     return 0;
 }
 
-static uint8_t sparkle(const uint32_t t, const uint32_t i, const uint32_t len, const struct pattern_data *data)
+static uint8_t sparkle(const uint32_t i, const uint32_t len, const struct pattern_data *data)
 {
-    const uint32_t state_length = min(STATES, data->max);
+    const uint32_t state_length = clamp(data->max, 0, STATES);
     if (i == 0)
     {
         for (uint32_t x = 0; x < state_length; x++)
@@ -158,7 +158,7 @@ uint8_t get_pattern(const enum pattern pattern, const uint32_t length, const uin
     case SNAKES_FADED:
         return snakes_faded(t, i, data);
     case SPARKLE:
-        return sparkle(t, i, length, data);
+        return sparkle(i, length, data);
     default:
         return 0;
     }
@@ -229,6 +229,13 @@ struct rgb get_color(const enum color color, const uint32_t t, const uint32_t i,
     case COLOR_WIPE:
         return color_wipe(t, i, data);
     default:
-        return data->colors[min(COLORS - 1, data->selected)];
+        return data->colors[clamp(data->selected, 0, COLORS - 1)];
     }
+}
+
+void generate_color_palette(const uint8_t amount, const struct rgb mix, struct color_data *data)
+{
+    data->used = clamp(amount, 0, COLORS);
+    for (uint32_t i = 0; i < data->used; i++)
+        data->colors[i] = rgb_init((mix.r + rng(0, 255)) / 2, (mix.g + rng(0, 255)) / 2, (mix.b + rng(0, 255)) / 2);
 }

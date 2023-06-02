@@ -1,7 +1,7 @@
 #ifndef _LED_EFFECTS_H_
 #define _LED_EFFECTS_H_
 #include "pico/stdlib.h"
-#define COLORS 8
+#define COLORS 32
 
 struct rgb
 {
@@ -53,5 +53,6 @@ struct color_data
     uint32_t max;
 };
 struct rgb get_color(const enum color color, const uint32_t t, const uint32_t i, const struct color_data *data);
+void generate_color_palette(const uint8_t amount, const struct rgb mix, struct color_data *data);
 
 #endif

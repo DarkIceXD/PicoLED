@@ -25,7 +25,7 @@ struct settings
     struct color_data color;
 };
 static struct settings settings = {
-    .ap_name = "DarkLEDs",
+    .ap_name = "PicoLED",
     .password = "password",
     .delay = 40,
     .length = 300,
@@ -189,9 +189,21 @@ static const char *http_post_handler(const char *path, const char *content)
                 if (!first_end)
                     return 0;
                 first_end += 1;
-                int r, g, b;
+                unsigned int r, g, b;
                 sscanf(first_end, "#%2x%2x%2x", &r, &g, &b);
                 settings.color.colors[index] = rgb_init(r, g, b);
+                break;
+            }
+            case 4:
+            {
+                const int index = atoi(first_end);
+                first_end = strchr(first_end, delim);
+                if (!first_end)
+                    return 0;
+                first_end += 1;
+                unsigned int r, g, b;
+                sscanf(first_end, "#%2x%2x%2x", &r, &g, &b);
+                generate_color_palette(index, rgb_init(r, g, b), &settings.color);
                 break;
             }
             default:
