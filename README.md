@@ -1,10 +1,47 @@
 # PicoLED
 
-This project enables you to utilize a Raspberry Pi Pico W along with a WS2812 LED strip to create various LED lighting effects.
-To begin, flash your Raspberry Pi Pico W with the led.uf2 file available in the releases section.
+The PicoLED project allows you to use a Raspberry Pi Pico W in conjunction with a WS2812 LED strip to generate different LED lighting effects.
 
-Next, connect the Raspberry Pi Pico W and the LED strip.
-Depending on the power requirements of the LED strip, you have two options. If the power draw is within the Pi Pico's capabilities, directly connect the LED strip as follows: connect 5V(LED) to VBUS(Pi Pico), GND(LED) to GND(Pi Pico), and DIN(LED) to GPIO2(Pi Pico). Power the Pi Pico using a micro USB cable.
-Alternatively, if an external power supply is needed, connect 5V(LED) to both VSYS(Pi Pico) and 5V(Power supply), GND(LED) to both GND(Pi Pico) and GND(Power supply), and DIN(LED) to GPIO2(Pi Pico). Then, turn on the power supply.
+## Getting Started
 
-Once the Pi Pico powers on, you can connect to the access point it creates using your phone. The default credentials are "PicoLED" for the network name and "password" for the password. After connecting, a captcha portal should open, allowing you to configure and apply various lighting effects.
+To get started with this project, follow the steps below:
+
+### Flashing the Raspberry Pi Pico W
+
+1. Download the `led.uf2` file from the [Releases](https://github.com/DarkIceXD/PicoLED/releases) section.
+2. Connect your Raspberry Pi Pico W to your computer via a micro USB cable while holding the Bootsel button.
+3. Flash the led.uf2 file onto the Raspberry Pi Pico W by dragging and dropping it.
+
+### Connecting the Raspberry Pi Pico W and LED Strip
+
+Depending on the power requirements of the LED strip, choose one of the following methods:
+
+#### Option 1: Powering over USB (if within Pi Pico's capabilities)
+
+Connect the LED strip as follows:
+- Connect `5V(LED)` to `VBUS(Pi Pico)`
+- Connect `GND(LED)` to `GND(Pi Pico)`
+- Connect `DIN(LED)` to `GPIO2(Pi Pico)`
+
+Power the Pi Pico using a micro USB cable.
+
+#### Option 2: External Power Supply (recommended)
+
+If an external power supply is required:
+- Connect `5V(Power supply)` to both`5V(LED)` and `VSYS(Pi Pico)` 
+- Connect `GND(Power supply)` to both `GND(LED)` and `GND(Pi Pico)` 
+- Connect `DIN(LED)` to `GPIO2(Pi Pico)`
+
+Then, turn on the power supply.
+
+### Connecting to the Pi Pico
+
+1. Once the Pi Pico powers on, search for available Wi-Fi networks on your phone.
+2. Connect to the Wi-Fi network named "PicoLED" (default network name).
+3. Use "password" as the password when prompted.
+
+A captcha portal should open, enabling you to configure and apply various lighting effects.
+
+## Contributing
+
+Pull requests and contributions are welcome. For major changes, please open an issue first to discuss the proposed changes.
