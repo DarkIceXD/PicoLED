@@ -7,7 +7,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: "Check out code"
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
+
+      - name: "Refresh package repositories"
+        run: |
+          sudo apt-get update
 
       - name: "Install dependencies"
         run: |
@@ -28,7 +32,8 @@ jobs:
           make -C build
 
       - name: "Upload binary"
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: led.uf2
           path: build/led.uf2
+          compression-level: 9

@@ -16,6 +16,8 @@ add_compile_options(-Wall -Wextra -Wpedantic)
 
 add_executable(led led.c algorithms/algorithms.c dhcpserver/dhcpserver.c dnsserver/dnsserver.c httpserver/httpserver.c led_effects/led_effects.c storage/storage.c)
 
+file(MAKE_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/generated)
+
 pico_generate_pio_header(led ${CMAKE_CURRENT_LIST_DIR}/ws2812.pio OUTPUT_DIR ${CMAKE_CURRENT_LIST_DIR}/generated)
 
 target_include_directories(led PRIVATE
